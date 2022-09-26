@@ -20,5 +20,8 @@ func init() {
 		fb.TimeRange(&cfg.Start, &cfg.End, "time range to search")
 		fb.GroupID(&cfg.GroupID, "group id to limit search within")
 		fb.SystemID(&cfg.SystemID, "system id to search within")
+		fb.Fields(&cfg.Fields, "which fields to include in the result")
+		fb.FieldSeparator(&cfg.FieldSeparator, "string used to separate field values")
+		fb.Limit(&cfg.Limit, "maximum number of results to return")
 	})
 }

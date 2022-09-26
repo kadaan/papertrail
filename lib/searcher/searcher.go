@@ -6,7 +6,6 @@ import (
 	"github.com/kadaan/papertrail/lib/command"
 	"github.com/kadaan/papertrail/lib/errors"
 	"github.com/kadaan/papertrail/lib/papertrail"
-	"k8s.io/klog/v2"
 	"strings"
 )
 
@@ -51,12 +50,52 @@ func (v *searcher) Run(cfg *config.SearchConfig, args []string) error {
 		return err
 	}
 
-	for _, e := range searchResp.Events {
-		var prog string
-		if e.Program != nil {
-			prog = *e.Program
+	events := searchResp.Events
+	if len(events) > 0 && cfg.Limit <= uint(len(events)) {
+		events = events[len(events)-int(cfg.Limit):]
+	}
+
+	var b strings.Builder
+	for _, e := range events {
+		for _, field := range cfg.Fields {
+			switch field {
+			case config.ReceivedAt:
+				writeField(cfg, &b, &e.ReceivedAt)
+				break
+			case config.SourceName:
+				writeField(cfg, &b, &e.SourceName)
+				break
+			case config.SourceIP:
+				writeField(cfg, &b, &e.SourceIP)
+				break
+			case config.Facility:
+				writeField(cfg, &b, &e.Facility)
+				break
+			case config.Program:
+				writeField(cfg, &b, e.Program)
+				break
+			case config.Message:
+				writeField(cfg, &b, &e.Message)
+				break
+			}
 		}
-		klog.V(0).Infof("%s %s %s %s: %s\n", e.ReceivedAt, e.SourceName, e.Facility, prog, e.Message)
+		if b.Len() > 0 {
+			fmt.Println(b.String())
+		}
+		b.Reset()
 	}
 	return nil
+}
+
+func writeField[T any](cfg *config.SearchConfig, stringBuilder *strings.Builder, value *T) {
+	if stringBuilder.Len() > 0 {
+		fieldSeparator := cfg.FieldSeparator
+		if len(fieldSeparator) == 0 {
+			fieldSeparator = "\x00"
+		}
+		stringBuilder.WriteString(fieldSeparator)
+	}
+	if value != nil {
+		stringBuilder.WriteString(fmt.Sprintf("%s", *value))
+	}
 }

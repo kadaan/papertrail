@@ -5,21 +5,34 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"github.com/thediveo/enumflag/v2"
 	"time"
 )
 
 const (
-	startKey        = "start"
-	endKey          = "end"
-	groupIdKey      = "groupId"
-	systemIdKey     = "systemId"
-	defaultGroupId  = 0
-	defaultSystemId = 0
+	startKey              = "start"
+	endKey                = "end"
+	groupIdKey            = "groupId"
+	systemIdKey           = "systemId"
+	fieldsKey             = "fields"
+	fieldSeparatorKey     = "fieldSeparator"
+	limitKey              = "limit"
+	defaultGroupId        = 0
+	defaultSystemId       = 0
+	defaultFieldSeparator = " "
+	defaultLimit          = 100
 )
 
 var (
-	defaultEnd   = time.Now().UTC()
-	defaultStart = defaultEnd.Add(-6 * time.Hour)
+	defaultEnd    = time.Now().UTC()
+	defaultStart  = defaultEnd.Add(-6 * time.Hour)
+	defaultFields = []FieldType{
+		ReceivedAt,
+		SourceName,
+		Facility,
+		Program,
+		Message,
+	}
 )
 
 func NewFlagBuilder(cmd *cobra.Command) FlagBuilder {
@@ -67,6 +80,9 @@ type FlagBuilder interface {
 	TimeRange(startDest *time.Time, endDest *time.Time, usage string) Flag
 	GroupID(dest *uint, usage string) Flag
 	SystemID(dest *uint, usage string) Flag
+	Fields(dest *[]FieldType, usage string) Flag
+	FieldSeparator(dest *string, usage string) Flag
+	Limit(dest *uint, usage string) Flag
 }
 
 type flagBuilder struct {
@@ -134,5 +150,26 @@ func (fb *flagBuilder) GroupID(dest *uint, usage string) Flag {
 func (fb *flagBuilder) SystemID(dest *uint, usage string) Flag {
 	return fb.newFlag(systemIdKey, func(flagSet *pflag.FlagSet) {
 		flagSet.UintVar(dest, systemIdKey, defaultSystemId, usage)
+	})
+}
+
+func (fb *flagBuilder) Fields(dest *[]FieldType, usage string) Flag {
+	*dest = defaultFields
+	return fb.newFlag(systemIdKey, func(flagSet *pflag.FlagSet) {
+		flagSet.Var(
+			enumflag.NewSlice(dest, fieldsKey, FieldTypeIds, enumflag.EnumCaseInsensitive),
+			fieldsKey, usage)
+	})
+}
+
+func (fb *flagBuilder) FieldSeparator(dest *string, usage string) Flag {
+	return fb.newFlag(fieldSeparatorKey, func(flagSet *pflag.FlagSet) {
+		flagSet.StringVar(dest, fieldSeparatorKey, defaultFieldSeparator, usage)
+	})
+}
+
+func (fb *flagBuilder) Limit(dest *uint, usage string) Flag {
+	return fb.newFlag(limitKey, func(flagSet *pflag.FlagSet) {
+		flagSet.UintVar(dest, limitKey, defaultLimit, usage)
 	})
 }

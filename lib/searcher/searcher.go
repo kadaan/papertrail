@@ -21,23 +21,11 @@ func (v *searcher) Run(cfg *config.SearchConfig, args []string) error {
 		return errors.New("No search criteria provided")
 	}
 
-	token, err := papertrail.ReadToken()
-	if err == papertrail.ErrNoTokenFound {
-		return errors.NewCommandError("No Papertrail API token found.\n\npapertrail requires a " +
-			"valid Papertrail API token (which you can obtain from https://papertrailapp.com/user/edit)\nto be set " +
-			"in the PAPERTRAIL_API_TOKEN environment variable or in ~/.papertrail.yml (in the format `token: MYTOKEN`).")
-	} else if err != nil {
-		return err
-	}
-
-	client := papertrail.NewClient((&papertrail.TokenTransport{Token: token}).Client())
-
 	searchOptions := papertrail.SearchOptions{
 		MinTime: cfg.Start,
 		MaxTime: cfg.End,
 		Query:   strings.Join(args, " "),
 	}
-
 	if cfg.GroupID > 0 {
 		searchOptions.GroupID = fmt.Sprintf("%d", cfg.GroupID)
 	}
@@ -45,14 +33,10 @@ func (v *searcher) Run(cfg *config.SearchConfig, args []string) error {
 		searchOptions.SystemID = fmt.Sprintf("%d", cfg.SystemID)
 	}
 
-	searchResp, _, err := client.Search(searchOptions)
+	searcher := papertrail.NewSearcher()
+	events, err := searcher.Search(searchOptions, cfg.Limit)
 	if err != nil {
-		return err
-	}
-
-	events := searchResp.Events
-	if len(events) > 0 && cfg.Limit <= uint(len(events)) {
-		events = events[len(events)-int(cfg.Limit):]
+		return errors.NewCommandError(err.Error())
 	}
 
 	var b strings.Builder
